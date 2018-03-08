@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>$id$</id>
+    <version>$version$</version>
+    <title>$title$</title>
+    <authors>$author$</authors>
+    <owners>$author$</owners>
+    <licenseUrl>https://github.com/GregaMohorko/GM.Windows.Tools/blob/master/LICENSE</licenseUrl>
+    <projectUrl>https://github.com/GregaMohorko/GM.Windows.Tools</projectUrl>
+    <iconUrl>https://mohorko.info/favicon.ico</iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>$description$</description>
+    <copyright>$copyright$</copyright>
+    <tags>tools windows nodejs node-js</tags>
+	<releaseNotes>Initial release.</releaseNotes>
+  </metadata>
+</package>

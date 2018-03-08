@@ -31,6 +31,12 @@
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>bin\Release\GM.Windows.Tools.xml</DocumentationFile>
   </PropertyGroup>
+  <PropertyGroup>
+    <SignAssembly>true</SignAssembly>
+  </PropertyGroup>
+  <PropertyGroup>
+    <AssemblyOriginatorKeyFile>GM.StrongNameKey.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="GM.Utility, Version=1.2.2.0, Culture=neutral, PublicKeyToken=a1ae152199607549, processorArchitecture=MSIL">
       <HintPath>..\packages\GM.Utility.1.2.2\lib\netstandard2.0\GM.Utility.dll</HintPath>
@@ -53,6 +59,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
+    <None Include="GM.StrongNameKey.snk" />
     <None Include="GM.Windows.Tools.licenseheader" />
     <None Include="packages.config" />
   </ItemGroup>
