@@ -40,9 +40,11 @@
   <ItemGroup>
     <Reference Include="GM.Utility, Version=1.2.2.0, Culture=neutral, PublicKeyToken=a1ae152199607549, processorArchitecture=MSIL">
       <HintPath>..\packages\GM.Utility.1.2.2\lib\netstandard2.0\GM.Utility.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="GM.Windows.Utility, Version=1.0.1.0, Culture=neutral, PublicKeyToken=a1ae152199607549, processorArchitecture=MSIL">
       <HintPath>..\packages\GM.Windows.Utility.1.0.1\lib\net461\GM.Windows.Utility.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
