@@ -89,6 +89,10 @@ namespace GM.Windows.Tools
 		public string CurrentDirectory { get; private set; }
 
 		/// <summary>
+		/// Determines whether the Node.Js server is currently running.
+		/// </summary>
+		public bool IsRunning { get; private set; }
+		/// <summary>
 		/// Determines whether the Node.JS server is currently compiling.
 		/// </summary>
 		public bool IsCompiling { get; private set; }
@@ -109,7 +113,6 @@ namespace GM.Windows.Tools
 		/// Node processes start by the npm.
 		/// </summary>
 		private List<Process> nodeProcesses;
-		private bool isNodejsRunning;
 
 		/// <summary>
 		/// Initializes a new instance of <see cref="NodeJsServer"/>.
@@ -139,7 +142,7 @@ namespace GM.Windows.Tools
 			} else if(!IsStarting && nodeProcesses.All(p => p.HasExited)) {
 				// they were probably exited manually
 				// lets restart them
-				isNodejsRunning = false;
+				IsRunning = false;
 				StartNodeJs(directory);
 			}
 		}
@@ -196,7 +199,7 @@ namespace GM.Windows.Tools
 		/// <param name="directory">The directory in which the Node.JS server will be started.</param>
 		private void StartNodeJs(string directory)
 		{
-			if(isNodejsRunning) {
+			if(IsRunning) {
 				KillNodeJs();
 			} else {
 				// look for any running node processes in that directory anyway
@@ -216,7 +219,7 @@ namespace GM.Windows.Tools
 			npmProcess.StandardInput.WriteLine("cd " + CurrentDirectory);
 			npmProcess.StandardInput.WriteLine(NPM + " start --scripts-prepend-node-path");
 			//npmProcess.StandardInput.WriteLine(NPM + " start --scripts-prepend-node-path 2> errorlog.txt");
-			isNodejsRunning = true;
+			IsRunning = true;
 			IsStarting = true;
 
 			// the server starts compiling at the start
@@ -242,6 +245,7 @@ namespace GM.Windows.Tools
 				npmProcess.Kill();
 			}
 			npmProcess?.Dispose();
+			npmProcess = null;
 		}
 
 		/// <summary>
@@ -280,7 +284,7 @@ namespace GM.Windows.Tools
 			//npmProcess.StandardInput.WriteLine('y');
 
 			KillAllNodeProcesses();
-			isNodejsRunning = false;
+			IsRunning = false;
 		}
 
 		/// <summary>
