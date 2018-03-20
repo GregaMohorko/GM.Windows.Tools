@@ -59,6 +59,10 @@ namespace GM.Windows.Tools
 		/// A message that indicates that the compilation has failed.
 		/// </summary>
 		public const string MESSAGE_COMPILE_FAILED = "webpack: Failed to compile.";
+		/// <summary>
+		/// A message that indicates that there was an error with npm.
+		/// </summary>
+		public const string MESSAGE_NPM_ERROR = "npm ERR!";
 
 		/// <summary>
 		/// Occurs when a new compile process starts.
@@ -301,9 +305,10 @@ namespace GM.Windows.Tools
 
 		private void NpmProcess_ErrorDataReceived(object sender, DataReceivedEventArgs e)
 		{
-			if(e.Data != null) {
-				OutputLine?.Invoke(this, e.Data.RemoveAllOf("\b"));
+			if(e.Data == null) {
+				return;
 			}
+			OnDataReceived(e.Data.RemoveAllOf("\b"));
 		}
 
 		private void NodejsProcess_OutputDataReceived(object sender, DataReceivedEventArgs e)
@@ -311,8 +316,12 @@ namespace GM.Windows.Tools
 			if(e.Data == null) {
 				return;
 			}
+			OnDataReceived(e.Data);
+		}
 
-			switch(e.Data) {
+		private void OnDataReceived(string data)
+		{
+			switch(data) {
 				case MESSAGE_COMPILE_STARTED:
 					IsCompiling = true;
 					CompileStarted?.Invoke(this, EventArgs.Empty);
@@ -332,9 +341,17 @@ namespace GM.Windows.Tools
 					IsCompiling = false;
 					CompileEnded?.Invoke(this, false);
 					break;
+				default:
+					if(IsRunning && data.StartsWith(MESSAGE_NPM_ERROR)) {
+						Stop();
+						IsStarting = false;
+						IsCompiling = false;
+						CompileEnded?.Invoke(this, false);
+					}
+					break;
 			}
 
-			OutputLine?.Invoke(this, e.Data);
+			OutputLine?.Invoke(this, data);
 		}
 
 		/// <summary>
