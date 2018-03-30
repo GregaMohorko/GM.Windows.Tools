@@ -32,6 +32,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GM.Utility;
 using GM.Windows.Utility;
@@ -63,6 +64,21 @@ namespace GM.Windows.Tools
 		/// A message that indicates that there was an error with npm.
 		/// </summary>
 		public const string MESSAGE_NPM_ERROR = "npm ERR!";
+		/// <summary>
+		/// A message that indicates that there was a warning in npm.
+		/// </summary>
+		public const string MESSAGE_NPM_WARNING = "npm WARN";
+		/// <summary>
+		/// A message that will be thrown with <see cref="InvalidOperationException"/> when any actions will be made while installing.
+		/// </summary>
+		public const string MESSAGE_CURRENTLY_INSTALLING = "Node.Js is currently installing packages.";
+
+		private const string SCRIPTS_PREPEND_NODE_PATH = "--scripts-prepend-node-path";
+
+		/// <summary>
+		/// A regex expression that determines whether the input text is a text saying that the installation has completed.
+		/// </summary>
+		public static readonly Regex InstallEndedIdentifier = new Regex(@"^added \d+ packages in \d+.?(\d+)?s$", RegexOptions.Compiled | RegexOptions.Singleline);
 
 		/// <summary>
 		/// Occurs when a new compile process starts.
@@ -76,6 +92,10 @@ namespace GM.Windows.Tools
 		/// Occurs when the server has finished starting up (when the initial compilation finishes).
 		/// </summary>
 		public event EventHandler Started;
+		/// <summary>
+		/// Occurs when the installation process has finished. The argument determines whether the compilation was successful.
+		/// </summary>
+		public event EventHandler<bool> InstallEnded;
 
 		/// <summary>
 		/// Occurs each time the server writes a line to its standard output.
@@ -83,27 +103,31 @@ namespace GM.Windows.Tools
 		public event EventHandler<string> OutputLine;
 
 		/// <summary>
-		/// The directory in which the Node.JS executables are located.
+		/// The directory in which the Node.Js executables are located.
 		/// </summary>
 		public readonly string ExecutablesDirectory;
 
 		/// <summary>
-		/// The directory in which the Node.JS server is currently running.
+		/// The directory in which the Node.Js server is currently running.
 		/// </summary>
 		public string CurrentDirectory { get; private set; }
 
 		/// <summary>
-		/// Determines whether the Node.Js server is currently running.
+		/// Determines whether the npm console and the Node.Js server is currently running.
 		/// </summary>
 		public bool IsRunning { get; private set; }
 		/// <summary>
-		/// Determines whether the Node.JS server is currently compiling.
+		/// Determines whether the Node.Js server is currently compiling.
 		/// </summary>
 		public bool IsCompiling { get; private set; }
 		/// <summary>
-		/// Determines whether the Node.JS server is currently starting.
+		/// Determines whether the Node.Js server is currently starting.
 		/// </summary>
 		public bool IsStarting { get; private set; }
+		/// <summary>
+		/// Determines whether the package installation (npm install command) is currently executing.
+		/// </summary>
+		public bool IsInstalling { get; private set; }
 
 		/// <summary>
 		/// The 'npm' command with the absolute path to the executables directory.
@@ -137,6 +161,10 @@ namespace GM.Windows.Tools
 		/// <param name="directory">The directory in which the Node.JS server should be running.</param>
 		public void Ensure(string directory)
 		{
+			if(IsInstalling) {
+				throw new InvalidOperationException(MESSAGE_CURRENTLY_INSTALLING);
+			}
+
 			if(!IsNpmRunning) {
 				Start(directory);
 			} else if(CurrentDirectory != directory.ToLower()) {
@@ -169,14 +197,27 @@ namespace GM.Windows.Tools
 		/// <summary>
 		/// Starts (or restarts) npm console which starts the Node.JS server in the specified directory. If npm is currently already running, it will be killed. If Node.JS is currently already running in the same executables directory, it will be killed.
 		/// </summary>
-		/// <param name="directory">The directory in which the Node.JS server will be started.</param>
+		/// <param name="directory">The directory in which the Node.Js server will be started.</param>
 		public void Start(string directory)
 		{
-			KillNpm();
+			if(IsInstalling) {
+				throw new InvalidOperationException(MESSAGE_CURRENTLY_INSTALLING);
+			}
 
+			KillNpm();
+			StartNpm();
+			StartNodeJs(directory);
+		}
+
+		/// <summary>
+		/// Creates and starts the <see cref="npmProcess"/>.
+		/// </summary>
+		private void StartNpm()
+		{
 			npmProcess = new Process
 			{
-				StartInfo = {
+				StartInfo =
+				{
 					FileName = "cmd.exe",
 					UseShellExecute = false,
 					CreateNoWindow = true,
@@ -193,8 +234,6 @@ namespace GM.Windows.Tools
 			npmProcess.Start();
 			npmProcess.BeginOutputReadLine();
 			npmProcess.BeginErrorReadLine();
-
-			StartNodeJs(directory);
 		}
 
 		/// <summary>
@@ -206,12 +245,7 @@ namespace GM.Windows.Tools
 			if(IsRunning) {
 				KillNodeJs();
 			} else {
-				// look for any running node processes in that directory anyway
-				List<Process> nodeProcessesAlreadyRunning = GetNodeProcessesByExecutablePath(ExecutablesDirectory);
-				// ... and kill them if they exist
-				if(!nodeProcessesAlreadyRunning.IsNullOrEmpty()) {
-					ProcessUtility.KillAllProcesses(nodeProcessesAlreadyRunning);
-				}
+				KillAllProcesssesOfThisNodeExecutables();
 			}
 
 			if(!IsNpmRunning) {
@@ -220,15 +254,43 @@ namespace GM.Windows.Tools
 
 			CurrentDirectory = directory.ToLower();
 
-			npmProcess.StandardInput.WriteLine("cd " + CurrentDirectory);
-			npmProcess.StandardInput.WriteLine(NPM + " start --scripts-prepend-node-path");
-			//npmProcess.StandardInput.WriteLine(NPM + " start --scripts-prepend-node-path 2> errorlog.txt");
 			IsRunning = true;
 			IsStarting = true;
 
 			// the server starts compiling at the start
 			IsCompiling = true;
 			CompileStarted?.Invoke(this, EventArgs.Empty);
+
+			npmProcess.StandardInput.WriteLine("cd " + CurrentDirectory);
+			npmProcess.StandardInput.WriteLine($"{NPM} start {SCRIPTS_PREPEND_NODE_PATH}");
+			//npmProcess.StandardInput.WriteLine($"{NPM} start {SCRIPTS_PREPEND_NODE_PATH} 2> errorlog.txt");
+		}
+
+		/// <summary>
+		/// Runs the 'npm install' command in the specified directory. The command installs all the needed Node.Js packages into 'node_modules' directory.
+		/// <para>If the Node.Js is currently running, it is stopped.</para>
+		/// </summary>
+		/// <param name="directory">The directory in which the install command will be ran.</param>
+		public void Install(string directory)
+		{
+			if(IsInstalling) {
+				throw new InvalidOperationException(MESSAGE_CURRENTLY_INSTALLING);
+			}
+
+			if(IsRunning) {
+				KillNodeJs();
+			} else {
+				KillAllProcesssesOfThisNodeExecutables();
+			}
+			if(!IsNpmRunning) {
+				StartNpm();
+			}
+
+			IsRunning = true;
+			IsInstalling = true;
+
+			npmProcess.StandardInput.WriteLine("cd " + directory);
+			npmProcess.StandardInput.WriteLine($"{NPM} install {SCRIPTS_PREPEND_NODE_PATH}");
 		}
 
 		/// <summary>
@@ -255,7 +317,7 @@ namespace GM.Windows.Tools
 		/// <summary>
 		/// Kills the Node.JS server, but keeps the npm console open.
 		/// </summary>
-		public void KillNodeJs()
+		private void KillNodeJs()
 		{
 			// doesn't work, only closes the CMD, but keeps the NodeJs open
 			//npmProcess.Kill();
@@ -289,6 +351,16 @@ namespace GM.Windows.Tools
 
 			KillAllNodeProcesses();
 			IsRunning = false;
+			IsStarting = false;
+			CurrentDirectory = null;
+			if(IsCompiling) {
+				IsCompiling = false;
+				CompileEnded?.Invoke(this, false);
+			}
+			if(IsInstalling) {
+				IsInstalling = false;
+				InstallEnded?.Invoke(this, false);
+			}
 		}
 
 		/// <summary>
@@ -347,11 +419,32 @@ namespace GM.Windows.Tools
 						IsStarting = false;
 						IsCompiling = false;
 						CompileEnded?.Invoke(this, false);
+					} else if(IsInstalling) {
+						if(data.StartsWith(MESSAGE_NPM_WARNING)) {
+							Stop();
+							InstallEnded?.Invoke(this, false);
+						} else if(InstallEndedIdentifier.IsMatch(data)) {
+							IsInstalling = false;
+							InstallEnded?.Invoke(this, true);
+						}
 					}
 					break;
 			}
 
 			OutputLine?.Invoke(this, data);
+		}
+
+		/// <summary>
+		/// Kills all processes (if any exist) that use the same executables as this instance of <see cref="NodeJsServer"/>.
+		/// </summary>
+		private void KillAllProcesssesOfThisNodeExecutables()
+		{
+			// look for any running node processes in that directory
+			List<Process> nodeProcessesAlreadyRunning = GetNodeProcessesByExecutablePath(ExecutablesDirectory);
+			// ... and kill them if they exist
+			if(!nodeProcessesAlreadyRunning.IsNullOrEmpty()) {
+				ProcessUtility.KillAllProcesses(nodeProcessesAlreadyRunning);
+			}
 		}
 
 		/// <summary>
@@ -387,10 +480,6 @@ namespace GM.Windows.Tools
 		#region IDisposable Support
 		private bool disposedValue = false; // To detect redundant calls
 
-		/// <summary>
-		/// Disposes.
-		/// </summary>
-		/// <param name="disposing">Determines whether or not to dispose managed objects or not.</param>
 		protected virtual void Dispose(bool disposing)
 		{
 			if(!disposedValue) {
