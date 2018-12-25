@@ -480,6 +480,10 @@ namespace GM.Windows.Tools
 		#region IDisposable Support
 		private bool disposedValue = false; // To detect redundant calls
 
+		/// <summary>
+		/// Disposes.
+		/// </summary>
+		/// <param name="disposing">Determines whether or not to dispose managed objects.</param>
 		protected virtual void Dispose(bool disposing)
 		{
 			if(!disposedValue) {

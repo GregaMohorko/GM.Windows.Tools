@@ -13,6 +13,6 @@
     <description>$description$</description>
     <copyright>$copyright$</copyright>
     <tags>tools windows nodejs node-js</tags>
-	<releaseNotes>Initial release.</releaseNotes>
+	<releaseNotes>NodeJsServer: Added IsRunning, Install action and support for intercepting npm error.</releaseNotes>
   </metadata>
 </package>
