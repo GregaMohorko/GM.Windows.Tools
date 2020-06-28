@@ -14,11 +14,11 @@
 - **[Node.js](https://github.com/GregaMohorko/GM.Windows.Tools/wiki/Node.Js)**: A tool for working with the Node.Js server.
 
 ## Requirements
-.NET Framework 4.6.1
+.NET Framework 4.7.1
 
 ## Author and License
-Grega Mohorko ([www.mohorko.info](https://www.mohorko.info))
+Gregor Mohorko ([www.mohorko.info](https://www.mohorko.info))
 
-Copyright (c) 2018 Grega Mohorko
+Copyright (c) 2020 Gregor Mohorko
 
 [MIT License](./LICENSE)

@@ -8,9 +8,9 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("GM.Windows.Tools")]
 [assembly: AssemblyDescription("Library with a set of specialized tools that can be used in Windows environment. (e.g. for NodeJs, ...).")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Grega Mohorko")]
+[assembly: AssemblyCompany("Gregor Mohorko")]
 [assembly: AssemblyProduct("GM.Windows.Tools")]
-[assembly: AssemblyCopyright("Copyright © Grega Mohorko 2018")]
+[assembly: AssemblyCopyright("Copyright © Gregor Mohorko 2020")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -32,5 +32,5 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("1.0.1.0")]
-[assembly: AssemblyFileVersion("1.0.1.0")]
+[assembly: AssemblyVersion("1.0.2.0")]
+[assembly: AssemblyFileVersion("1.0.2.0")]
